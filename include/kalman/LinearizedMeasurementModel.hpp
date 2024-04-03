@@ -73,7 +73,7 @@ namespace Kalman
         LinearizedMeasurementModel()
         {
             H.setIdentity();
-            V.setIdentity();
+            R.setIdentity();
         }
         ~LinearizedMeasurementModel() {}
     };

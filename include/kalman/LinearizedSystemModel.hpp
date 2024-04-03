@@ -74,7 +74,7 @@ namespace Kalman
         LinearizedSystemModel()
         {
             F.setIdentity();
-            W.setIdentity();
+            Q.setIdentity();
         }
         ~LinearizedSystemModel() {}
     };
