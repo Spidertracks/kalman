@@ -27,124 +27,135 @@
 #include "LinearizedSystemModel.hpp"
 #include "LinearizedMeasurementModel.hpp"
 
-namespace Kalman {
-    
+namespace Kalman
+{
+
     /**
      * @brief Extended Kalman Filter (EKF)
-     * 
+     *
      * This implementation is based upon [An Introduction to the Kalman Filter](https://www.cs.unc.edu/~welch/media/pdf/kalman_intro.pdf)
      * by Greg Welch and Gary Bishop.
      *
      * @param StateType The vector-type of the system state (usually some type derived from Kalman::Vector)
      */
-    template<class StateType>
-    class ExtendedKalmanFilter : public KalmanFilterBase<StateType>,
-                                 public StandardFilterBase<StateType>
+    template <class StateType>
+    class AltExtendedKalmanFilter : public KalmanFilterBase<StateType>,
+                                    public StandardFilterBase<StateType>
     {
     public:
         //! Kalman Filter base type
         typedef KalmanFilterBase<StateType> KalmanBase;
         //! Standard Filter base type
         typedef StandardFilterBase<StateType> StandardBase;
-        
+
         //! Numeric Scalar Type inherited from base
         using typename KalmanBase::T;
-        
+
         //! State Type inherited from base
         using typename KalmanBase::State;
-        
+
         //! Linearized Measurement Model Type
-        template<class Measurement, template<class> class CovarianceBase>
+        template <class Measurement, template <class> class CovarianceBase>
         using MeasurementModelType = LinearizedMeasurementModel<State, Measurement, CovarianceBase>;
-        
+
         //! Linearized System Model Type
-        template<class Control, template<class> class CovarianceBase>
+        template <class Control, template <class> class CovarianceBase>
         using SystemModelType = LinearizedSystemModel<State, Control, CovarianceBase>;
-        
+
     protected:
         //! Kalman Gain Matrix Type
-        template<class Measurement>
+        template <class Measurement>
         using KalmanGain = Kalman::KalmanGain<State, Measurement>;
-        
+
     protected:
         //! State Estimate
         using KalmanBase::x;
         //! State Covariance Matrix
         using StandardBase::P;
-        
+
     public:
         /**
          * @brief Constructor
          */
-        ExtendedKalmanFilter()
+        AltExtendedKalmanFilter()
         {
             // Setup state and covariance
             P.setIdentity();
         }
-        
+
         /**
          * @brief Perform filter prediction step using system model and no control input (i.e. \f$ u = 0 \f$)
          *
          * @param [in] s The System model
+         * @param [in] f Optional function to be called after state prediction. Eg. to normalize a quaternion in state
          * @return The updated state estimate
          */
-        template<class Control, template<class> class CovarianceBase>
-        const State& predict( SystemModelType<Control, CovarianceBase>& s )
+        template <class Control, template <class> class CovarianceBase>
+        const State &predict(SystemModelType<Control, CovarianceBase> &s, std::function<void(State&)> f = nullptr)
         {
             // predict state (without control)
             Control u;
             u.setZero();
-            return predict( s, u );
+            return predict(s, u, f);
         }
-        
+
         /**
          * @brief Perform filter prediction step using control input \f$u\f$ and corresponding system model
          *
          * @param [in] s The System model
          * @param [in] u The Control input vector
+         * @param [in] f Optional function to be called after state prediction. Eg. to normalize a quaternion in state
          * @return The updated state estimate
          */
-        template<class Control, template<class> class CovarianceBase>
-        const State& predict( SystemModelType<Control, CovarianceBase>& s, const Control& u )
+        template <class Control, template <class> class CovarianceBase>
+        const State &predict(SystemModelType<Control, CovarianceBase> &s, const Control &u, std::function<void(State&)> f = nullptr)
         {
-            s.updateJacobians( x, u );
-            
+            s.updateJacobians(x, u);
+
             // predict state
             x = s.f(x, u);
-            
+            if (f){
+                f(x);
+            }
+
             // predict covariance
-            P  = ( s.F * P * s.F.transpose() ) + ( s.W * s.getCovariance() * s.W.transpose() );
-            
+            P = (s.F * P * s.F.transpose()) + s.Q;
+
             // return state prediction
             return this->getState();
         }
-        
+
         /**
          * @brief Perform filter update step using measurement \f$z\f$ and corresponding measurement model
          *
          * @param [in] m The Measurement model
          * @param [in] z The measurement vector
+         * @param [in] f Optional function to be called after state update. Eg. to normalize a quaternion in state
          * @return The updated state estimate
          */
-        template<class Measurement, template<class> class CovarianceBase>
-        const State& update( MeasurementModelType<Measurement, CovarianceBase>& m, const Measurement& z )
+        template <class Measurement, template <class> class CovarianceBase>
+        const State &update(MeasurementModelType<Measurement, CovarianceBase> &m, const Measurement &z, std::function<void(State&)> f = nullptr)
         {
-            m.updateJacobians( x );
-            
+            m.updateJacobians(x);
+
             // COMPUTE KALMAN GAIN
             // compute innovation covariance
-            Covariance<Measurement> S = ( m.H * P * m.H.transpose() ) + ( m.V * m.getCovariance() * m.V.transpose() );
-            
+            Covariance<Measurement> S = (m.H * P * m.H.transpose()) + m.R;
+
             // compute kalman gain
             KalmanGain<Measurement> K = P * m.H.transpose() * S.inverse();
-            
+
             // UPDATE STATE ESTIMATE AND COVARIANCE
             // Update state using computed kalman gain and innovation
-            x += K * ( z - m.h( x ) );
-            
+            x += K * (z - m.h(x));
+            if (f){
+                f(x);
+            }
+
             // Update covariance
             P -= K * m.H * P;
-            
+            // P = 0.5 * (P + P.transpose()); // ensure P is symmetric
+
             // return updated state estimate
             return this->getState();
         }
