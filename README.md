@@ -1,7 +1,5 @@
 # Kalman Filter Library
 
-[![Build Status](https://travis-ci.org/mherb/kalman.svg?branch=master)](https://travis-ci.org/mherb/kalman)
-
 This is a header-only C++11 library implementing common variants of the well-known [Kalman-Filter](https://en.wikipedia.org/wiki/Kalman_filter).
 Currently implementations of these filter variants are included:
 
@@ -9,6 +7,17 @@ Currently implementations of these filter variants are included:
 * Square Root Extended Kalman Filter (SR-EKF)
 * Unscented Kalman Filter (UKF)
 * Square Root Unscented Kalman Filter (SR-UKF)
+
+## This is a fork
+
+The upstream of this repo isn't maintained and there are a couple of different forks with changes which are potentially of use.
+
+* [SREKF fixes](https://github.com/TobiSchluter/kalman)
+* [Various fixes and changes picked from other forks](https://github.com/heimdallpower/kalman)
+  * Use Q and R matrices rather than W and V
+  * Correct sigma point calculation for UKF
+  * Mahalanobis outlier rejection
+
 
 ## Dependencies
 
