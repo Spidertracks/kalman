@@ -204,14 +204,14 @@ namespace Kalman
                 return false;
             }
 
-            SquareMatrix<T, State::RowsAtCompileTime> _S = llt.matrixL().toDenseMatrix();
+            SquareMatrix<T, State::RowsAtCompileTime> SR = llt.matrixL().toDenseMatrix();
 
             // Set left "block" (first column)
             sigmaStatePoints.template leftCols<1>() = x;
             // Set center block with x + gamma * S
-            sigmaStatePoints.template block<State::RowsAtCompileTime, State::RowsAtCompileTime>(0, 1) = (this->gamma * _S).colwise() + x;
+            sigmaStatePoints.template block<State::RowsAtCompileTime, State::RowsAtCompileTime>(0, 1) = (this->gamma * SR).colwise() + x;
             // Set right block with x - gamma * S
-            sigmaStatePoints.template rightCols<State::RowsAtCompileTime>() = (-this->gamma * _S).colwise() + x;
+            sigmaStatePoints.template rightCols<State::RowsAtCompileTime>() = (-this->gamma * SR).colwise() + x;
 
             return true;
         }
