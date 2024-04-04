@@ -54,7 +54,6 @@ namespace Kalman
         //! System control input type
         using typename Base::Control;
 
-    protected:
         //! System model jacobian
         Jacobian<State, State> F;
         //! Process noise covariance
